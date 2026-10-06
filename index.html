@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Trenkės</title>
+<meta name="description" content="Karatė treniruočių mėnesio uždarbio skaičiuoklė su mėnesių istorija.">
+<meta name="theme-color" content="#B42318">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trenkės">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column (max 580px). Calculator card first with the month's result as the focal number, then months stacked by season, backup tools last. */
+:root{
+  --bg:#F5F3EF; --surface:#FFFFFF; --fg:#1C1B1F; --muted:#6E6B73; --line:#E3DFD8; --input-bg:#FBFAF8;
+  --accent:#B42318; --accent-fg:#FFFFFF; --accent-soft:#FBECE9; --warn:#8A5A00;
+  --font-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --font-body:"Barlow","Segoe UI",Roboto,Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#151417; --surface:#1F1E23; --fg:#F1EFEB; --muted:#A39FA8; --line:#302E35; --input-bg:#17161A;
+    --accent:#F2574E; --accent-fg:#1A0907; --accent-soft:#3B1E1B; --warn:#E3B457; color-scheme:dark }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.4;padding-inline:16px;padding-block:calc(20px + env(safe-area-inset-top,0px)) calc(56px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:580px;margin:0 auto;display:grid;gap:22px}
+h1,h2{margin:0;font-family:var(--font-display);text-wrap:balance;line-height:1.05}
+h1{font-size:42px;font-weight:700}
+h2{font-size:22px;font-weight:600}
+.top .sub{margin:4px 0 0;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.calc-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px}
+form{display:grid;gap:12px}
+label{display:grid;gap:5px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;min-width:0}
+input,select,textarea{width:100%;min-width:0;font:inherit;font-family:var(--font-body);font-size:17px;font-weight:500;color:var(--fg);background:var(--input-bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
+input:focus-visible,select:focus-visible,button:focus-visible,.month:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.hint{font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:13px}
+.result{margin-top:4px;border-top:1px solid var(--line);padding-top:14px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}
+.result dl{margin:0;display:grid;gap:6px;min-width:0}
+.result dl div{display:flex;justify-content:space-between;gap:10px;font-size:15px}
+.result dt{color:var(--muted)}
+.result dd{margin:0;font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+.big{display:grid;justify-items:end}
+.big-label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.big-num{font-family:var(--font-display);font-size:58px;font-weight:700;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+button{font:inherit;font-family:var(--font-body);cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:10px 16px;font-weight:600}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);padding:12px 20px;font-size:17px}
+button.primary:disabled{opacity:.55;cursor:not-allowed}
+button.link{border:0;background:none;color:var(--accent);padding:2px 6px}
+button.ghost{background:none}
+button.small{padding:6px 10px;font-size:14px}
+.status{color:var(--muted);font-size:14px}
+.confirm{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-size:15px}
+.months{display:grid;gap:10px}
+.months-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px 14px;flex-wrap:wrap}
+.months-head h2{margin-right:auto}
+.grand{color:var(--muted);font-size:15px;font-variant-numeric:tabular-nums}
+.note{margin:0;color:var(--muted);font-size:14px}
+.season{display:grid;gap:0;margin-top:4px}
+.season-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:6px 4px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.season-head b{color:var(--fg);font-variant-numeric:tabular-nums;font-size:14px}
+.stack{display:grid}
+.month{background:var(--surface);border:1px solid var(--line);border-top-width:0;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center;cursor:pointer}
+.stack>.month:first-child{border-top-width:1px;border-radius:12px 12px 0 0}
+.stack>.month:last-child{border-radius:0 0 12px 12px}
+.stack>.month:first-child:last-child{border-radius:12px}
+.month:hover{background:var(--input-bg)}
+.month .name{font-weight:600;font-size:17px}
+.month .name small{font-weight:400;color:var(--accent);font-size:13px}
+.month .share{font-family:var(--font-display);font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent);white-space:nowrap}
+.month .meta{grid-column:1 / -1;color:var(--muted);font-size:14px;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:center;font-variant-numeric:tabular-nums}
+.month .meta .warn{color:var(--warn)}
+.month .tools{grid-column:1 / -1;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px;margin-top:6px}
+.empty{color:var(--muted);text-align:center;padding:24px;border:1px dashed var(--line);border-radius:12px;margin:0}
+.backup{display:grid;gap:10px}
+.backup .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.backup p{margin:0;color:var(--muted);font-size:14px}
+.file-btn{position:relative;overflow:hidden}
+.file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:15px;max-width:calc(100% - 32px);text-align:center;z-index:5}
+@media (max-width:420px){.big-num{font-size:50px}}
+@media (prefers-reduced-motion:no-preference){.month{transition:background .15s}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <h1>Trenkės</h1>
+    <p class="sub">Karatė treniruočių uždarbis: surinkta, minus salės nuoma, mano dalis.</p>
+  </header>
+
+  <section class="card" aria-labelledby="calcTitle">
+    <div class="calc-head">
+      <h2 id="calcTitle">Naujas mėnuo</h2>
+      <button type="button" class="link" id="cancelEdit" hidden>Atšaukti</button>
+    </div>
+    <form id="form" novalidate>
+      <div class="row2">
+        <label for="month">Mėnuo<select id="month"></select></label>
+        <label for="year">Metai<input id="year" type="number" min="2020" max="2100" step="1" inputmode="numeric"></label>
+      </div>
+      <div class="row3">
+        <label for="days">Dienos<input id="days" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></label>
+        <label for="hours">Val. per dieną<input id="hours" type="number" min="0" step="0.5" inputmode="decimal" value="2"></label>
+        <label for="rate">€ už val.<input id="rate" type="number" min="0" step="0.5" inputmode="decimal" value="8"></label>
+      </div>
+      <label for="vilius">Vilius surinko, €<input id="vilius" type="text" placeholder="405 + 0 + 395" autocomplete="off"><span class="hint">Grupes rašyk per pliusą, susumuos pats.</span></label>
+      <label for="me">Aš surinkau, €<input id="me" type="text" placeholder="50 + 0 + 50" autocomplete="off"></label>
+      <div class="row2">
+        <label for="pct">Mano dalis, %<input id="pct" type="number" min="0" max="100" step="5" inputmode="numeric" value="30"></label>
+        <label for="note">Pastaba<input id="note" type="text" placeholder="nebūtina" autocomplete="off"></label>
+      </div>
+      <div class="result">
+        <dl>
+          <div><dt>Surinkta</dt><dd id="rTotal">0 €</dd></div>
+          <div><dt>Nuoma</dt><dd id="rRent">0 €</dd></div>
+          <div><dt>Liko po nuomos</dt><dd id="rNet">0 €</dd></div>
+          <div><dt id="rRawLabel">30 % tiksliai</dt><dd id="rRaw">0,00 €</dd></div>
+        </dl>
+        <div class="big"><span class="big-label">Man</span><span class="big-num" id="rShare">0 €</span></div>
+      </div>
+      <div class="confirm" id="confirm" hidden>
+        <span id="confirmText"></span>
+        <button type="button" class="small primary" id="confirmYes">Perrašyti</button>
+        <button type="button" class="small" id="confirmNo">Ne</button>
+      </div>
+      <div class="actions">
+        <button type="submit" class="primary" id="saveBtn">Išsaugoti mėnesį</button>
+        <span class="status" id="saveStatus"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="months" aria-labelledby="monthsTitle">
+    <div class="months-head">
+      <h2 id="monthsTitle">Mėnesiai</h2>
+      <span class="grand" id="grand"></span>
+      <button type="button" class="ghost small" id="copyBtn">Kopijuoti Excel’iui</button>
+    </div>
+    <div id="list"></div>
+  </section>
+
+  <section class="card backup" aria-labelledby="backupTitle">
+    <h2 id="backupTitle">Atsarginė kopija</h2>
+    <p>Mėnesiai saugomi šiame įrenginyje. Kopija (.json failas) leidžia perkelti juos į kitą telefoną ar kompiuterį ir apsaugo, jei išvalytum naršyklės duomenis.</p>
+    <div class="row">
+      <button type="button" class="small" id="exportBtn">Atsisiųsti kopiją</button>
+      <span class="file-btn"><button type="button" class="small">Įkelti kopiją</button><input type="file" id="importFile" accept=".json,application/json" aria-label="Įkelti kopiją"></span>
+      <span class="status" id="backupStatus"></span>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const MONTHS=["Sausis","Vasaris","Kovas","Balandis","Gegužė","Birželis","Liepa","Rugpjūtis","Rugsėjis","Spalis","Lapkritis","Gruodis"];
+const KEY='trenkes.v1';
+const $=id=>document.getElementById(id);
+const fmt0=new Intl.NumberFormat('lt-LT',{maximumFractionDigits:0});
+const fmt2=new Intl.NumberFormat('lt-LT',{minimumFractionDigits:2,maximumFractionDigits:2});
+const eur0=n=>fmt0.format(n)+' €';
+const eur2=n=>fmt2.format(n)+' €';
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const monthName=(y,m)=>MONTHS[m-1]+' '+y;
+const seasonOf=(y,m)=>m>=9?(y+'–'+(y+1)):((y-1)+'–'+y);
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const today=()=>new Date().toISOString().slice(0,10);
+
+/* "405 + 0 + 395" -> [405, 0, 395]; comma or dot decimals both work */
+function parseAmounts(text){
+  const s=String(text||'').replace(/\s+/g,'');
+  if(!s)return[];
+  return (s.match(/[+-]?\d+(?:[.,]\d+)?/g)||[]).map(t=>parseFloat(t.replace(',','.'))).filter(Number.isFinite);
+}
+/* Money in whole cents so 756 × 30 % is exactly 226.80 and rounds up to 227 */
+function calc(i){
+  const viliusSum=sum(i.viliusParts),meSum=sum(i.meParts);
+  const total=viliusSum+meSum, rent=i.days*i.hours*i.rate, net=total-rent;
+  const cents=Math.round(net*i.pct);
+  return{viliusSum,meSum,total,rent,net,shareRaw:cents/100,share:Math.ceil(cents/100)};
+}
+/* One month record, always rebuilt from its inputs so stored numbers can never drift */
+function makeMonth(f){
+  const year=+f.year||0, month=Math.min(12,Math.max(1,+f.month||1));
+  const vp=parseAmounts(f.viliusText),mp=parseAmounts(f.meText);
+  const days=+f.days||0,hours=+f.hours||0,rate=+f.rate||0,pct=+f.pct||0;
+  const c=calc({days,hours,rate,pct,viliusParts:vp,meParts:mp});
+  const ym=year+'-'+String(month).padStart(2,'0');
+  return{id:ym,ym,year,month,days,hours,rate,pct,
+    viliusText:vp.join(' + '),viliusSum:c.viliusSum,meText:mp.join(' + '),meSum:c.meSum,
+    total:c.total,rent:c.rent,net:c.net,shareRaw:c.shareRaw,share:c.share,
+    note:String(f.note||'').trim(),updatedAt:f.updatedAt||new Date().toISOString()};
+}
+
+/* ---- storage on this device ---- */
+function load(){
+  try{const raw=localStorage.getItem(KEY);if(!raw)return[];const d=JSON.parse(raw);
+    return Array.isArray(d.months)?d.months.filter(m=>m&&m.year&&m.month).map(makeMonth):[];}
+  catch(e){return[];}
+}
+function persist(){
+  try{localStorage.setItem(KEY,JSON.stringify({version:1,savedAt:new Date().toISOString(),months}));return true;}
+  catch(e){toast('Nepavyko išsaugoti įrenginyje (vietos trūkumas ar privatus langas).');return false;}
+}
+
+let months=load(), editingId=null, pendingDelete=null, confirmArmed=false, toastT=null;
+const now=new Date();
+const F={month:$('month'),year:$('year'),days:$('days'),hours:$('hours'),rate:$('rate'),vilius:$('vilius'),me:$('me'),pct:$('pct'),note:$('note')};
+MONTHS.forEach((n,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=n;F.month.appendChild(o);});
+F.month.value=now.getMonth()+1; F.year.value=now.getFullYear();
+if(months.length){const latest=[...months].sort((a,b)=>b.ym.localeCompare(a.ym))[0];F.hours.value=latest.hours;F.rate.value=latest.rate;F.pct.value=latest.pct;}
+
+function readForm(){
+  return{year:+F.year.value||now.getFullYear(),month:+F.month.value||1,days:F.days.value,hours:F.hours.value,rate:F.rate.value,pct:F.pct.value,viliusText:F.vilius.value,meText:F.me.value,note:F.note.value};
+}
+function preview(){
+  const d=makeMonth(readForm());
+  $('rTotal').textContent=eur0(d.total); $('rRent').textContent=eur0(d.rent); $('rNet').textContent=eur0(d.net);
+  $('rRawLabel').textContent=d.pct+' % tiksliai'; $('rRaw').textContent=eur2(d.shareRaw); $('rShare').textContent=eur0(d.share);
+}
+function setStatus(t){$('saveStatus').textContent=t;}
+function hideConfirm(){$('confirm').hidden=true;confirmArmed=false;}
+function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;},4000);}
+function resetForm(after){
+  editingId=null; $('calcTitle').textContent='Naujas mėnuo'; $('cancelEdit').hidden=true;
+  if(after){let m=after.month+1,y=after.year;if(m>12){m=1;y++;}F.month.value=m;F.year.value=y;}
+  F.days.value='';F.vilius.value='';F.me.value='';F.note.value='';hideConfirm();preview();render();
+}
+function startEdit(id){
+  const m=months.find(x=>x.id===id); if(!m)return;
+  editingId=id; $('calcTitle').textContent='Redaguoji: '+monthName(m.year,m.month); $('cancelEdit').hidden=false;
+  F.month.value=m.month;F.year.value=m.year;F.days.value=m.days;F.hours.value=m.hours;F.rate.value=m.rate;F.pct.value=m.pct;
+  F.vilius.value=m.viliusText||'';F.me.value=m.meText||'';F.note.value=m.note||'';
+  hideConfirm();setStatus('');preview();render();window.scrollTo({top:0,behavior:'smooth'});
+}
+function doDelete(id){
+  months=months.filter(m=>m.id!==id);
+  if(persist())toast('Ištrinta.');
+  if(editingId===id)resetForm(null);
+  pendingDelete=null;render();
+}
+function render(){
+  const list=$('list');
+  const total=sum(months.map(m=>m.share||0));
+  $('grand').textContent=months.length?('Iš viso '+eur0(total)):'';
+  if(!months.length){list.innerHTML='<p class="empty">Dar nėra išsaugotų mėnesių. Užpildyk skaičiuoklę viršuje ir spausk „Išsaugoti mėnesį“, arba įkelk atsarginę kopiją apačioje.</p>';return;}
+  const sorted=[...months].sort((a,b)=>b.ym.localeCompare(a.ym));
+  const groups=new Map();
+  for(const m of sorted){const s=seasonOf(m.year,m.month);if(!groups.has(s))groups.set(s,[]);groups.get(s).push(m);}
+  let html='';
+  for(const [s,arr] of groups){
+    html+='<div class="season"><div class="season-head"><span>Sezonas '+esc(s)+' · '+arr.length+' mėn.</span><b>'+esc(eur0(sum(arr.map(m=>m.share||0))))+'</b></div><div class="stack">';
+    for(const m of arr){
+      const warn=(!m.total)?'<span class="warn">sumos dar neįrašytos</span>':'';
+      const tools=pendingDelete===m.id
+        ?'<div class="tools"><span>Ištrinti '+esc(monthName(m.year,m.month))+'?</span><button type="button" class="small primary" data-act="del-yes" data-id="'+esc(m.id)+'">Taip, ištrinti</button><button type="button" class="small" data-act="del-no">Ne</button></div>'
+        :'';
+      html+='<div class="month" data-id="'+esc(m.id)+'" role="button" tabindex="0">'
+        +'<span class="name">'+esc(monthName(m.year,m.month))+(editingId===m.id?' <small>redaguoji</small>':'')+'</span>'
+        +'<span class="share">'+esc(eur0(m.share||0))+'</span>'
+        +'<span class="meta"><span>surinkta '+esc(eur0(m.total||0))+'</span><span>nuoma '+esc(eur0(m.rent||0))+'</span><span>liko '+esc(eur0(m.net||0))+'</span><span>'+esc(m.pct)+' %</span>'
+        +(m.note?'<span>· '+esc(m.note)+'</span>':'')+warn
+        +'<button type="button" class="link small" data-act="del" data-id="'+esc(m.id)+'">Ištrinti</button></span>'
+        +tools+'</div>';
+    }
+    html+='</div></div>';
+  }
+  list.innerHTML=html;
+}
+
+$('form').addEventListener('input',()=>{hideConfirm();preview();});
+$('form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const d=makeMonth(readForm());
+  const exists=months.some(m=>m.id===d.id);
+  if(exists&&editingId!==d.id&&!confirmArmed){
+    $('confirmText').textContent=monthName(d.year,d.month)+' jau išsaugotas. Perrašyti?';
+    $('confirm').hidden=false;confirmArmed=true;return;
+  }
+  hideConfirm();
+  months=months.filter(m=>m.id!==d.id).concat([d]);
+  if(persist()){setStatus('Išsaugota: '+monthName(d.year,d.month)+', man '+eur0(d.share));resetForm(d);}
+});
+$('confirmYes').addEventListener('click',()=>{const f=$('form');if(f.requestSubmit)f.requestSubmit();else f.dispatchEvent(new Event('submit',{cancelable:true}));});
+$('confirmNo').addEventListener('click',hideConfirm);
+$('cancelEdit').addEventListener('click',()=>{resetForm(null);F.month.value=now.getMonth()+1;F.year.value=now.getFullYear();setStatus('');preview();});
+$('list').addEventListener('click',e=>{
+  const btn=e.target.closest('button[data-act]');
+  if(btn){e.stopPropagation();const act=btn.dataset.act,id=btn.dataset.id;
+    if(act==='del'){pendingDelete=id;render();}else if(act==='del-yes'){doDelete(id);}else{pendingDelete=null;render();}
+    return;}
+  const row=e.target.closest('.month'); if(row)startEdit(row.dataset.id);
+});
+$('list').addEventListener('keydown',e=>{
+  if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('month')){e.preventDefault();startEdit(e.target.dataset.id);}
+});
+
+/* ---- Excel: tab-separated input columns, paste at B2 of sheet "Mėnesiai" ---- */
+$('copyBtn').addEventListener('click',async()=>{
+  if(!months.length){toast('Nėra ką kopijuoti.');return;}
+  const cell=t=>'='+((String(t||'').replace(/\s/g,''))||'0');
+  const rows=[...months].sort((a,b)=>a.ym.localeCompare(b.ym))
+    .map(m=>[m.year,m.month,m.days,m.hours,m.rate,cell(m.viliusText),cell(m.meText),m.pct,String(m.note||'').replace(/[\t\n]/g,' ')].join('\t'));
+  const text=rows.join('\n');
+  try{await navigator.clipboard.writeText(text);toast('Nukopijuota. Excel’yje pažymėk langelį B2 lape „Mėnesiai“ ir įklijuok.');}
+  catch(err){
+    const ta=document.createElement('textarea');ta.value=text;ta.setAttribute('aria-label','Tekstas Excel’iui');
+    ta.style.cssText='position:fixed;left:16px;right:16px;top:16px;height:180px;z-index:6;font:13px monospace';
+    document.body.appendChild(ta);ta.focus();ta.select();
+    toast('Automatiškai nukopijuoti nepavyko. Tekstas pažymėtas, spausk Ctrl+C.');setTimeout(()=>ta.remove(),20000);
+  }
+});
+
+/* ---- backup file out / in ---- */
+$('exportBtn').addEventListener('click',()=>{
+  const data=JSON.stringify({app:'Trenkės',version:1,exportedAt:new Date().toISOString(),months:[...months].sort((a,b)=>a.ym.localeCompare(b.ym))},null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='trenkes-kopija-'+today()+'.json';
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+  $('backupStatus').textContent='Kopija: '+months.length+' mėn.';
+});
+$('importFile').addEventListener('change',e=>{
+  const file=e.target.files&&e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const d=JSON.parse(reader.result);
+      const list=Array.isArray(d)?d:(d&&Array.isArray(d.months)?d.months:null);
+      if(!list)throw new Error('no months');
+      const incoming=list.filter(m=>m&&m.year&&m.month).map(makeMonth);
+      if(!incoming.length)throw new Error('empty');
+      const ids=new Set(incoming.map(m=>m.id));
+      months=months.filter(m=>!ids.has(m.id)).concat(incoming);
+      if(persist()){$('backupStatus').textContent='Įkelta: '+incoming.length+' mėn.';toast('Įkelta '+incoming.length+' mėn.');render();}
+    }catch(err){$('backupStatus').textContent='';toast('Šis failas nėra Trenkių kopija.');}
+    e.target.value='';
+  };
+  reader.readAsText(file);
+});
+
+preview(); render();
+if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{});}
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+}
+})();
+</script>
+</body>
+</html>
