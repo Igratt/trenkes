@@ -1,0 +1,21 @@
+{
+  "name": "trenkes-android",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Trenkes Android app (Capacitor wrapper around the web app in the repo root)",
+  "scripts": {
+    "sync": "node sync.mjs && npx cap sync android",
+    "open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/clipboard": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.0.0",
+    "@capacitor/preferences": "^7.0.0",
+    "@capacitor/share": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}

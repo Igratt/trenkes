@@ -1,0 +1,11 @@
+{
+  "appId": "lt.igratt.trenkes",
+  "appName": "Trenkės",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

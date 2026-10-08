@@ -204,23 +204,38 @@ function makeMonth(f){
     note:String(f.note||'').trim(),updatedAt:f.updatedAt||new Date().toISOString()};
 }
 
-/* ---- storage on this device ---- */
-function load(){
-  try{const raw=localStorage.getItem(KEY);if(!raw)return[];const d=JSON.parse(raw);
-    return Array.isArray(d.months)?d.months.filter(m=>m&&m.year&&m.month).map(makeMonth):[];}
-  catch(e){return[];}
+/* ---- storage on this device ----
+   Browser: localStorage. Packaged as an Android app (Capacitor): the app's own native storage
+   (Preferences) is the source of truth and localStorage is only a cache, so clearing browser
+   data never touches it. */
+const NATIVE=!!(window.Capacitor&&typeof window.Capacitor.isNativePlatform==='function'&&window.Capacitor.isNativePlatform());
+const PL=NATIVE&&window.Capacitor.Plugins?window.Capacitor.Plugins:null;
+function parseStore(raw){
+  try{const d=JSON.parse(raw);return Array.isArray(d.months)?d.months.filter(m=>m&&m.year&&m.month).map(makeMonth):null;}
+  catch(e){return null;}
+}
+async function load(){
+  if(PL&&PL.Preferences){try{const r=await PL.Preferences.get({key:KEY});if(r&&r.value){const m=parseStore(r.value);if(m)return m;}}catch(e){}}
+  try{const raw=localStorage.getItem(KEY);if(raw){const m=parseStore(raw);if(m)return m;}}catch(e){}
+  return[];
 }
 function persist(){
-  try{localStorage.setItem(KEY,JSON.stringify({version:1,savedAt:new Date().toISOString(),months}));return true;}
-  catch(e){toast('Nepavyko išsaugoti įrenginyje (vietos trūkumas ar privatus langas).');return false;}
+  const payload=JSON.stringify({version:1,savedAt:new Date().toISOString(),months});
+  let ok=false;
+  try{localStorage.setItem(KEY,payload);ok=true;}catch(e){}
+  if(PL&&PL.Preferences){
+    PL.Preferences.set({key:KEY,value:payload}).catch(()=>{toast('Nepavyko išsaugoti programos saugykloje.');});
+    return true;
+  }
+  if(!ok)toast('Nepavyko išsaugoti įrenginyje (vietos trūkumas ar privatus langas).');
+  return ok;
 }
 
-let months=load(), editingId=null, pendingDelete=null, confirmArmed=false, toastT=null;
+let months=[], editingId=null, pendingDelete=null, confirmArmed=false, toastT=null;
 const now=new Date();
 const F={month:$('month'),year:$('year'),days:$('days'),hours:$('hours'),rate:$('rate'),vilius:$('vilius'),me:$('me'),pct:$('pct'),note:$('note')};
 MONTHS.forEach((n,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=n;F.month.appendChild(o);});
 F.month.value=now.getMonth()+1; F.year.value=now.getFullYear();
-if(months.length){const latest=[...months].sort((a,b)=>b.ym.localeCompare(a.ym))[0];F.hours.value=latest.hours;F.rate.value=latest.rate;F.pct.value=latest.pct;}
 
 function readForm(){
   return{year:+F.year.value||now.getFullYear(),month:+F.month.value||1,days:F.days.value,hours:F.hours.value,rate:F.rate.value,pct:F.pct.value,viliusText:F.vilius.value,meText:F.me.value,note:F.note.value};
@@ -314,7 +329,11 @@ $('copyBtn').addEventListener('click',async()=>{
   const rows=[...months].sort((a,b)=>a.ym.localeCompare(b.ym))
     .map(m=>[m.year,m.month,m.days,m.hours,m.rate,cell(m.viliusText),cell(m.meText),m.pct,String(m.note||'').replace(/[\t\n]/g,' ')].join('\t'));
   const text=rows.join('\n');
-  try{await navigator.clipboard.writeText(text);toast('Nukopijuota. Excel’yje pažymėk langelį B2 lape „Mėnesiai“ ir įklijuok.');}
+  try{
+    if(PL&&PL.Clipboard)await PL.Clipboard.write({string:text});
+    else await navigator.clipboard.writeText(text);
+    toast('Nukopijuota. Excel’yje pažymėk langelį B2 lape „Mėnesiai“ ir įklijuok.');
+  }
   catch(err){
     const ta=document.createElement('textarea');ta.value=text;ta.setAttribute('aria-label','Tekstas Excel’iui');
     ta.style.cssText='position:fixed;left:16px;right:16px;top:16px;height:180px;z-index:6;font:13px monospace';
@@ -324,10 +343,20 @@ $('copyBtn').addEventListener('click',async()=>{
 });
 
 /* ---- backup file out / in ---- */
-$('exportBtn').addEventListener('click',()=>{
+$('exportBtn').addEventListener('click',async()=>{
   const data=JSON.stringify({app:'Trenkės',version:1,exportedAt:new Date().toISOString(),months:[...months].sort((a,b)=>a.ym.localeCompare(b.ym))},null,2);
+  const name='trenkes-kopija-'+today()+'.json';
+  if(PL&&PL.Filesystem&&PL.Share){
+    /* Android app: write the file to the app cache and hand it to the system share sheet (Drive, OneDrive, Files...) */
+    try{
+      const f=await PL.Filesystem.writeFile({path:name,data,directory:'CACHE',encoding:'utf8'});
+      await PL.Share.share({title:'Trenkės kopija',files:[f.uri]});
+      $('backupStatus').textContent='Kopija: '+months.length+' mėn.';
+    }catch(err){if(!/cancel/i.test(String(err&&err.message)))toast('Nepavyko sukurti kopijos.');}
+    return;
+  }
   const blob=new Blob([data],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='trenkes-kopija-'+today()+'.json';
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
   document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
   $('backupStatus').textContent='Kopija: '+months.length+' mėn.';
 });
@@ -351,8 +380,13 @@ $('importFile').addEventListener('change',e=>{
 });
 
 preview(); render();
+(async()=>{
+  months=await load();
+  if(months.length){const latest=[...months].sort((a,b)=>b.ym.localeCompare(a.ym))[0];F.hours.value=latest.hours;F.rate.value=latest.rate;F.pct.value=latest.pct;}
+  preview(); render();
+})();
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{});}
-if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')&&!NATIVE){
   window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
 }
 })();
